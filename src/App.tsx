@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Upload, AlertTriangle, CheckCircle, HelpCircle, Github, Twitter, Linkedin, AlertCircle, Eye, Lock } from 'lucide-react';
+import { Shield, Upload, AlertTriangle, CheckCircle, HelpCircle, Github, Twitter, Linkedin, AlertCircle, Eye, Lock, Mail } from 'lucide-react';
 
 type AnalysisResult = {
   isSuspicious: boolean;
@@ -13,8 +13,9 @@ type AnalysisResult = {
 
 function App() {
   const [isDragging, setIsDragging] = useState(false);
-  const [result, setResult] = useState<AnalysisResult>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState<number>(-1);
+  const [results, setResults] = useState<(AnalysisResult | null)[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -31,58 +32,86 @@ function App() {
     e.preventDefault();
     setIsDragging(false);
     
-    const file = e.dataTransfer.files[0];
-    if (file && file.name.endsWith('.eml')) {
-      setSelectedFile(file);
+    const files = e.dataTransfer.files;
+    if (files) {
+      const fileArray = Array.from(files).filter(file => file.name.endsWith('.eml'));
+      setSelectedFiles(prev => [...prev, ...fileArray]);
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.name.endsWith('.eml')) {
-      setSelectedFile(file);
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const fileArray = Array.from(files).filter(file => file.name.endsWith('.eml'));
+      setSelectedFiles(prev => [...prev, ...fileArray]);
     }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(files => files.filter((_, i) => i !== index));
+    setResults(prevResults => {
+      const newResults = [...prevResults];
+      if (newResults[index]) {
+        newResults[index] = null;
+      }
+      return newResults;
+    });
   };
 
   const handleAnalyze = async () => {
-    setResult(null);
     setError(null);
-    setIsAnalyzing(true);
-
-    if (!selectedFile) return;
-
-    try {
-      const formData = new FormData();
-      formData.append('email_file', selectedFile);
-
-      const response = await fetch('http://localhost:8000/api/analysis/analyze_email/', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Analysis failed');
-      }
-
-      const data = await response.json();
-      setResult({
-        isSuspicious: data.is_suspicious,
-        sender: data.sender,
-        subject: data.subject,
-        recipient: data.recipient,
-        date: data.date,
-        body: selectedFile.name,
-        analysis: typeof data.analysis === 'string' 
-          ? [data.analysis] 
-          : data.analysis || []
-      });
-    } catch (error) {
-      console.error('Error analyzing email:', error);
-      setError(error instanceof Error ? error.message : 'Unknown error occurred');
-    } finally {
-      setIsAnalyzing(false);
+    
+    if (results.length === 0 && selectedFiles.length > 0) {
+      setResults(new Array(selectedFiles.length).fill(null));
     }
+    
+    for (let i = 0; i < selectedFiles.length; i++) {
+      if (results[i]) continue;
+      
+      setCurrentFileIndex(i);
+      setIsAnalyzing(true);
+      
+      try {
+        const formData = new FormData();
+        formData.append('email_file', selectedFiles[i]);
+        
+        const response = await fetch('http://localhost:8000/api/analysis/analyze_email/', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Analysis failed');
+        }
+        
+        const data = await response.json();
+        
+        setResults(prevResults => {
+          const newResults = [...prevResults];
+          newResults[i] = {
+            isSuspicious: data.is_suspicious,
+            sender: data.sender,
+            subject: data.subject,
+            recipient: data.recipient,
+            date: data.date,
+            body: selectedFiles[i].name,
+            analysis: typeof data.analysis === 'string' 
+              ? [data.analysis] 
+              : data.analysis || []
+          };
+          return newResults;
+        });
+      } catch (error) {
+        console.error('Error analyzing email:', error);
+        setError(error instanceof Error ? error.message : 'Unknown error occurred');
+        break;
+      } finally {
+        setIsAnalyzing(false);
+      }
+    }
+    
+    setCurrentFileIndex(-1);
   };
 
   return (
@@ -119,174 +148,169 @@ function App() {
           </div>
         )}
 
-        {!result ? (
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Detect Phishing Attempts
-              </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Upload your suspicious email and let our advanced AI analyze it for potential threats. 
-                Stay protected against phishing attacks.
-              </p>
-            </div>
-
-            {isAnalyzing ? (
-              <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl shadow-lg">
-                <div className="relative">
-                  <div className="h-24 w-24 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-                  <div className="absolute top-0 left-0 h-24 w-24 rounded-full border-t-4 border-blue-300 animate-pulse opacity-75"></div>
-                </div>
-                <p className="mt-8 text-xl font-medium text-gray-700">Analyzing your email...</p>
-                <p className="text-sm text-gray-500 mt-2">Our AI is scanning for potential threats</p>
-                <div className="mt-6 flex items-center space-x-2">
-                  <div className="h-2 w-2 bg-blue-600 rounded-full animate-ping"></div>
-                  <div className="h-2 w-2 bg-blue-600 rounded-full animate-ping" style={{ animationDelay: '0.2s' }}></div>
-                  <div className="h-2 w-2 bg-blue-600 rounded-full animate-ping" style={{ animationDelay: '0.4s' }}></div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl shadow-lg p-8 transition duration-300 hover:shadow-xl">
-                <div className="flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-full mx-auto mb-6">
-                  <Upload className="h-6 w-6" />
-                </div>
-                
-                <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg text-center bg-gray-50 hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
-                     onClick={() => document.getElementById('fileInput')?.click()}>
-                  <input
-                    id="fileInput"
-                    type="file"
-                    className="hidden"
-                    onChange={handleFileSelect}
-                    accept=".eml"
-                  />
-                  <div className="py-8">
-                    {selectedFile ? (
-                      <div className="flex flex-col items-center">
-                        <CheckCircle className="h-10 w-10 text-green-500 mb-3" />
-                        <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {(selectedFile.size / 1024).toFixed(2)} KB
-                        </p>
-                        <button 
-                          className="mt-3 text-xs text-red-600 hover:text-red-800"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedFile(null);
-                          }}
-                        >
-                          Remove file
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-sm font-medium text-gray-700">
-                          Drag and drop your .eml file here, or click to browse
-                        </p>
-                        <p className="mt-1 text-xs text-gray-500">
-                          Only .eml files are supported
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </div>
-                
-                <button
-                  onClick={handleAnalyze}
-                  disabled={!selectedFile}
-                  className={`mt-6 w-full flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-md transition duration-200 ${
-                    !selectedFile ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg transform hover:-translate-y-0.5'
-                  }`}
-                >
-                  {isAnalyzing ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </span>
-                  ) : (
-                    "Analyze Email"
-                  )}
-                </button>
-              </div>
-            )}
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Detect Phishing Attempts
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Upload your suspicious emails and let our advanced AI analyze them for potential threats.
+            </p>
           </div>
-        ) : (
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden animate-fadeIn">
-            <div className={`p-6 ${result.isSuspicious ? 'bg-red-50' : 'bg-green-50'} border-b`}>
-              <div className="flex items-center">
-                {result.isSuspicious ? (
-                  <>
-                    <div className="flex-shrink-0 bg-red-100 rounded-full p-2">
-                      <AlertTriangle className="h-5 w-5 text-red-600" />
-                    </div>
-                    <span className="font-medium text-red-800 ml-3">Suspicious Email Detected</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex-shrink-0 bg-green-100 rounded-full p-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    </div>
-                    <span className="font-medium text-green-800 ml-3">Email Appears Safe</span>
-                  </>
-                )}
-                <button
-                  onClick={() => setResult(null)}
-                  className="ml-auto bg-white py-1 px-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Go Back
-                </button>
+          
+          <div className="bg-white rounded-xl shadow-lg p-8 transition duration-300 hover:shadow-xl mb-8">
+            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-full mx-auto mb-6">
+              <Upload className="h-6 w-6" />
+            </div>
+            
+            <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg text-center bg-gray-50 hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
+                 onClick={() => document.getElementById('fileInput')?.click()}>
+              <input
+                id="fileInput"
+                type="file"
+                className="hidden"
+                onChange={handleFileSelect}
+                accept=".eml"
+                multiple
+              />
+              <div className="py-8">
+                <p className="text-sm font-medium text-gray-700">
+                  Drag and drop your .eml files here, or click to browse
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Only .eml files are supported
+                </p>
               </div>
             </div>
-
-            <div className="p-6 space-y-8">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4 border-b pb-2">Email Details</h3>
-                <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gray-50 px-4 py-3 rounded-lg shadow-sm hover:shadow-md transition duration-200">
-                    <dt className="text-sm font-medium text-gray-500">Sender</dt>
-                    <dd className="mt-1 text-sm text-gray-900 font-medium">{result.sender}</dd>
-                  </div>
-                  <div className="bg-gray-50 px-4 py-3 rounded-lg shadow-sm hover:shadow-md transition duration-200">
-                    <dt className="text-sm font-medium text-gray-500">Subject</dt>
-                    <dd className="mt-1 text-sm text-gray-900 font-medium">{result.subject}</dd>
-                  </div>
-                  <div className="bg-gray-50 px-4 py-3 rounded-lg shadow-sm hover:shadow-md transition duration-200">
-                    <dt className="text-sm font-medium text-gray-500">Recipient</dt>
-                    <dd className="mt-1 text-sm text-gray-900 font-medium">{result.recipient}</dd>
-                  </div>
-                  <div className="bg-gray-50 px-4 py-3 rounded-lg shadow-sm hover:shadow-md transition duration-200">
-                    <dt className="text-sm font-medium text-gray-500">Date</dt>
-                    <dd className="mt-1 text-sm text-gray-900 font-medium">{result.date}</dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4 border-b pb-2">Analysis</h3>
-                <ul className="space-y-3">
-                  {result.analysis.map((rec, index) => (
-                    <li
-                      key={index}
-                      className={`flex items-start text-sm ${
-                        result.isSuspicious ? 'bg-red-50 text-red-800' : 'bg-green-50 text-green-800'
-                      } p-4 rounded-lg shadow-sm`}
-                    >
-                      {result.isSuspicious ? (
-                        <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 text-red-500 mt-0.5" />
-                      ) : (
-                        <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0 text-green-500 mt-0.5" />
-                      )}
-                      <span>{rec}</span>
+            
+            {selectedFiles.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Files ({selectedFiles.length})</h4>
+                <ul className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
+                  {selectedFiles.map((file, index) => (
+                    <li key={index} className="py-2 flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                        <span className="text-sm text-gray-900">{file.name}</span>
+                        {results[index] && (
+                          <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                            results[index]?.isSuspicious 
+                              ? 'bg-red-100 text-red-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {results[index]?.isSuspicious ? 'Suspicious' : 'Safe'}
+                          </span>
+                        )}
+                      </div>
+                      <button 
+                        className="text-xs text-red-600 hover:text-red-800"
+                        onClick={() => removeFile(index)}
+                      >
+                        Remove
+                      </button>
                     </li>
                   ))}
                 </ul>
               </div>
-            </div>
+            )}
+            
+            <button
+              onClick={handleAnalyze}
+              disabled={selectedFiles.length === 0 || isAnalyzing}
+              className={`mt-6 w-full flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-md transition duration-200 ${
+                selectedFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg transform hover:-translate-y-0.5'
+              }`}
+            >
+              {isAnalyzing ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {currentFileIndex >= 0 
+                    ? `Analyzing file ${currentFileIndex + 1} of ${selectedFiles.length}...` 
+                    : 'Processing...'}
+                </span>
+              ) : (
+                `Analyze ${selectedFiles.length} Email${selectedFiles.length !== 1 ? 's' : ''}`
+              )}
+            </button>
           </div>
-        )}
+          
+          {results.some(r => r !== null) && (
+            <div className="space-y-8">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Analysis Results</h3>
+              
+              {results.map((result, index) => {
+                if (!result) return null;
+                
+                return (
+                  <div key={index} className="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <div className={`p-6 ${result.isSuspicious ? 'bg-red-50' : 'bg-green-50'} border-b`}>
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 bg-white rounded-full p-2 shadow-sm">
+                          {result.isSuspicious ? (
+                            <AlertTriangle className="h-5 w-5 text-red-600" />
+                          ) : (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          )}
+                        </div>
+                        <span className="font-medium ml-3">
+                          {selectedFiles[index]?.name}: {result.isSuspicious ? 'Suspicious Email Detected' : 'Email Appears Safe'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-6 space-y-6">
+                      <div>
+                        <h4 className="text-lg font-medium text-gray-900 mb-2">Email Details</h4>
+                        <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-gray-50 px-4 py-3 rounded-lg">
+                            <dt className="text-sm font-medium text-gray-500">Sender</dt>
+                            <dd className="mt-1 text-sm text-gray-900">{result.sender}</dd>
+                          </div>
+                          <div className="bg-gray-50 px-4 py-3 rounded-lg">
+                            <dt className="text-sm font-medium text-gray-500">Subject</dt>
+                            <dd className="mt-1 text-sm text-gray-900">{result.subject}</dd>
+                          </div>
+                          <div className="bg-gray-50 px-4 py-3 rounded-lg">
+                            <dt className="text-sm font-medium text-gray-500">Recipient</dt>
+                            <dd className="mt-1 text-sm text-gray-900">{result.recipient}</dd>
+                          </div>
+                          <div className="bg-gray-50 px-4 py-3 rounded-lg">
+                            <dt className="text-sm font-medium text-gray-500">Date</dt>
+                            <dd className="mt-1 text-sm text-gray-900">{result.date}</dd>
+                          </div>
+                        </dl>
+                      </div>
+
+                      <div>
+                        <h4 className="text-lg font-medium text-gray-900 mb-2">Analysis</h4>
+                        <ul className="space-y-2">
+                          {result.analysis.map((rec, recIndex) => (
+                            <li
+                              key={recIndex}
+                              className={`flex items-center text-sm ${
+                                result.isSuspicious ? 'bg-red-50' : 'bg-green-50'
+                              } p-3 rounded-lg`}
+                            >
+                              {result.isSuspicious ? (
+                                <AlertCircle className="h-5 w-5 mr-2 text-red-500" />
+                              ) : (
+                                <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
+                              )}
+                              <span>{rec}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Info Section */}
         <div className="mt-16 max-w-5xl mx-auto">
