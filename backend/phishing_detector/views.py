@@ -8,6 +8,9 @@ from email import policy
 from email.parser import BytesParser
 import tempfile
 
+class BadFormatEml(Exception):
+    pass
+
 class EmlParser:
     """Parser for .eml file and analyse it to detect if is fishing or not.
 
@@ -39,12 +42,15 @@ class EmlParser:
     
     @property
     def body(self):
-        if self.msg.is_multipart():
-            for part in self.msg.iter_parts():
-                if part.get_content_type() == "text/plain":
-                    return part.get_payload(decode=True).decode(part.get_content_charset() or 'utf-8')
-        else:
-            return self.msg.get_payload(decode=True).decode(self.msg.get_content_charset() or 'utf-8')
+        try:
+            if self.msg.is_multipart():
+                for part in self.msg.iter_parts():
+                    if part.get_content_type() == "text/plain":
+                        return part.get_payload(decode=True).decode(part.get_content_charset() or 'utf-8')
+            else:
+                return self.msg.get_payload(decode=True).decode(self.msg.get_content_charset() or 'utf-8')
+        except UnicodeDecodeError as e:
+            raise BadFormatEml()
 
     def parse(self, path):
         """Parse .eml.
@@ -77,7 +83,6 @@ class EmlParser:
                 },
             ],
         )
-        print(response.choices[0].message.content)
         return json.loads(response.choices[0].message.content)
 
     @property
@@ -117,6 +122,8 @@ class EmailAnalysisViewSet(viewsets.ViewSet):
                     'is_suspicious': analyse["spam"],
                     'analysis': analyse["details"],
                 })
+            except BadFormatEml:
+                return Response({'error': 'File is not a valid .eml.'}, status=400)
             finally:
                 # Clean up the temporary file
                 os.unlink(temp_path)

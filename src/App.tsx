@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Upload, AlertTriangle, CheckCircle, HelpCircle, Github, Twitter, Linkedin } from 'lucide-react';
+import { Shield, Upload, AlertTriangle, CheckCircle, HelpCircle, Github, Twitter, Linkedin, AlertCircle } from 'lucide-react';
 
 type AnalysisResult = {
   isSuspicious: boolean;
@@ -15,6 +15,8 @@ function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [result, setResult] = useState<AnalysisResult>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -43,6 +45,10 @@ function App() {
   };
 
   const handleAnalyze = async () => {
+    setResult(null);
+    setError(null);
+    setIsAnalyzing(true);
+
     if (!selectedFile) return;
 
     try {
@@ -55,7 +61,8 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error('Analysis failed');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Analysis failed');
       }
 
       const data = await response.json();
@@ -72,6 +79,9 @@ function App() {
       });
     } catch (error) {
       console.error('Error analyzing email:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error occurred');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -218,6 +228,16 @@ function App() {
                 </ul>
               </div>
             </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-300 text-red-800 p-4 rounded-lg mb-6">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 mr-2 text-red-500" />
+              <h3 className="text-lg font-medium">Analysis Error</h3>
+            </div>
+            <p className="mt-2 text-sm">{error}</p>
           </div>
         )}
       </main>
