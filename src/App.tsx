@@ -19,23 +19,29 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
     
-    const files = e.dataTransfer.files;
-    if (files) {
-      const fileArray = Array.from(files).filter(file => file.name.endsWith('.eml'));
-      setSelectedFiles(prev => [...prev, ...fileArray]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const fileArray = Array.from(e.dataTransfer.files).filter(file => file.name.endsWith('.eml'));
+      
+      if (fileArray.length > 0) {
+        setSelectedFiles(prev => [...prev, ...fileArray]);
+      }
     }
   };
 
@@ -163,8 +169,13 @@ function App() {
               <Upload className="h-6 w-6" />
             </div>
             
-            <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg text-center bg-gray-50 hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
-                 onClick={() => document.getElementById('fileInput')?.click()}>
+            <div 
+              className={`p-4 border-2 ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100'} rounded-lg text-center transition-colors duration-200 cursor-pointer`}
+              onClick={() => document.getElementById('fileInput')?.click()}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
               <input
                 id="fileInput"
                 type="file"
@@ -174,12 +185,20 @@ function App() {
                 multiple
               />
               <div className="py-8">
-                <p className="text-sm font-medium text-gray-700">
-                  Drag and drop your .eml files here, or click to browse
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Only .eml files are supported
-                </p>
+                {isDragging ? (
+                  <p className="text-sm font-medium text-blue-600">
+                    Drop your files here
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-gray-700">
+                      Drag and drop your .eml files here, or click to browse
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Only .eml files are supported
+                    </p>
+                  </>
+                )}
               </div>
             </div>
             
