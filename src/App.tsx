@@ -81,12 +81,13 @@ function App() {
         const formData = new FormData();
         formData.append('email_file', selectedFiles[i]);
         
-        const response = await fetch('http://localhost:8000/api/analysis/analyze_email/', {
+        const response = await fetch('/api/analysis/analyze_email/', {
           method: 'POST',
           body: formData,
         });
         
         if (!response.ok) {
+          console.log(response);
           const errorData = await response.json();
           throw new Error(errorData.error || 'Analysis failed');
         }

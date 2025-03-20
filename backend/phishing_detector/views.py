@@ -7,6 +7,11 @@ import mistralai
 from email import policy
 from email.parser import BytesParser
 import tempfile
+from django.views.generic import TemplateView
+from django.views.decorators.cache import never_cache
+   
+# Serve the frontend
+index_view = never_cache(TemplateView.as_view(template_name='index.html'))
 
 class BadFormatEml(Exception):
     pass

@@ -25,6 +25,7 @@ dist-ssr
 *.pyc
 
 __pycache__/
+backend/backend/__pycache__/*
 
 venv
 .bolt
