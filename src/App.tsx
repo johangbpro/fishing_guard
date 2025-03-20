@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, Upload, AlertTriangle, CheckCircle, HelpCircle, Github, Twitter, Linkedin, AlertCircle, Eye, Lock, Mail } from 'lucide-react';
+import HelpPage from './HelpPage';
 
 type AnalysisResult = {
   isSuspicious: boolean;
@@ -18,6 +19,7 @@ function App() {
   const [results, setResults] = useState<(AnalysisResult | null)[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [currentPage, setCurrentPage] = useState('home');
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -136,229 +138,250 @@ function App() {
               </h1>
             </div>
             <nav className="flex space-x-8">
-              <a href="#" className="text-gray-600 hover:text-blue-600 font-medium transition duration-150">Home</a>
-              <a href="#" className="text-gray-600 hover:text-blue-600 font-medium transition duration-150">Results</a>
-              <a href="#" className="text-gray-600 hover:text-blue-600 font-medium transition duration-150">Help</a>
+              <a 
+                href="#" 
+                onClick={() => setCurrentPage('home')}
+                className={`text-gray-600 hover:text-blue-600 font-medium transition duration-150 ${
+                  currentPage === 'home' ? 'text-blue-600' : ''
+                }`}
+              >
+                Home
+              </a>
+              <a 
+                href="#" 
+                onClick={() => setCurrentPage('help')}
+                className={`text-gray-600 hover:text-blue-600 font-medium transition duration-150 ${
+                  currentPage === 'help' ? 'text-blue-600' : ''
+                }`}
+              >
+                Help
+              </a>
             </nav>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 rounded-lg mb-8 shadow-md animate-fadeIn">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2 text-red-500" />
-              <h3 className="text-lg font-medium">Analysis Error</h3>
-            </div>
-            <p className="mt-2 text-sm">{error}</p>
-          </div>
-        )}
-
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Detect Phishing Attempts
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Upload your suspicious emails and let our advanced AI analyze them for potential threats.
-            </p>
-          </div>
-          
-          <div className="bg-white rounded-xl shadow-lg p-8 transition duration-300 hover:shadow-xl mb-8">
-            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-full mx-auto mb-6">
-              <Upload className="h-6 w-6" />
-            </div>
-            
-            <div 
-              className={`p-4 border-2 ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100'} rounded-lg text-center transition-colors duration-200 cursor-pointer`}
-              onClick={() => document.getElementById('fileInput')?.click()}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <input
-                id="fileInput"
-                type="file"
-                className="hidden"
-                onChange={handleFileSelect}
-                accept=".eml"
-                multiple
-              />
-              <div className="py-8">
-                {isDragging ? (
-                  <p className="text-sm font-medium text-blue-600">
-                    Drop your files here
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-sm font-medium text-gray-700">
-                      Drag and drop your .eml files here, or click to browse
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Only .eml files are supported
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-            
-            {selectedFiles.length > 0 && (
-              <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Files ({selectedFiles.length})</h4>
-                <ul className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
-                  {selectedFiles.map((file, index) => (
-                    <li key={index} className="py-2 flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Mail className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-900">{file.name}</span>
-                        {results[index] && (
-                          <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-                            results[index]?.isSuspicious 
-                              ? 'bg-red-100 text-red-800' 
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {results[index]?.isSuspicious ? 'Suspicious' : 'Safe'}
-                          </span>
-                        )}
-                      </div>
-                      <button 
-                        className="text-xs text-red-600 hover:text-red-800"
-                        onClick={() => removeFile(index)}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+        {currentPage === 'home' ? (
+          <React.Fragment>
+            {error && (
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 rounded-lg mb-8 shadow-md animate-fadeIn">
+                <div className="flex items-center">
+                  <AlertCircle className="h-5 w-5 mr-2 text-red-500" />
+                  <h3 className="text-lg font-medium">Analysis Error</h3>
+                </div>
+                <p className="mt-2 text-sm">{error}</p>
               </div>
             )}
-            
-            <button
-              onClick={handleAnalyze}
-              disabled={selectedFiles.length === 0 || isAnalyzing}
-              className={`mt-6 w-full flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-md transition duration-200 ${
-                selectedFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg transform hover:-translate-y-0.5'
-              }`}
-            >
-              {isAnalyzing ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {currentFileIndex >= 0 
-                    ? `Analyzing file ${currentFileIndex + 1} of ${selectedFiles.length}...` 
-                    : 'Processing...'}
-                </span>
-              ) : (
-                `Analyze ${selectedFiles.length} Email${selectedFiles.length !== 1 ? 's' : ''}`
-              )}
-            </button>
-          </div>
-          
-          {results.some(r => r !== null) && (
-            <div className="space-y-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Analysis Results</h3>
+
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  Detect Phishing Attempts
+                </h2>
+                <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                  Upload your suspicious emails and let our advanced AI analyze them for potential threats.
+                </p>
+              </div>
               
-              {results.map((result, index) => {
-                if (!result) return null;
+              <div className="bg-white rounded-xl shadow-lg p-8 transition duration-300 hover:shadow-xl mb-8">
+                <div className="flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-full mx-auto mb-6">
+                  <Upload className="h-6 w-6" />
+                </div>
                 
-                return (
-                  <div key={index} className="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <div className={`p-6 ${result.isSuspicious ? 'bg-red-50' : 'bg-green-50'} border-b`}>
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 bg-white rounded-full p-2 shadow-sm">
-                          {result.isSuspicious ? (
-                            <AlertTriangle className="h-5 w-5 text-red-600" />
-                          ) : (
-                            <CheckCircle className="h-5 w-5 text-green-600" />
-                          )}
-                        </div>
-                        <span className="font-medium ml-3">
-                          {selectedFiles[index]?.name}: {result.isSuspicious ? 'Suspicious Email Detected' : 'Email Appears Safe'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="p-6 space-y-6">
-                      <div>
-                        <h4 className="text-lg font-medium text-gray-900 mb-2">Email Details</h4>
-                        <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="bg-gray-50 px-4 py-3 rounded-lg">
-                            <dt className="text-sm font-medium text-gray-500">Sender</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{result.sender}</dd>
-                          </div>
-                          <div className="bg-gray-50 px-4 py-3 rounded-lg">
-                            <dt className="text-sm font-medium text-gray-500">Subject</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{result.subject}</dd>
-                          </div>
-                          <div className="bg-gray-50 px-4 py-3 rounded-lg">
-                            <dt className="text-sm font-medium text-gray-500">Recipient</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{result.recipient}</dd>
-                          </div>
-                          <div className="bg-gray-50 px-4 py-3 rounded-lg">
-                            <dt className="text-sm font-medium text-gray-500">Date</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{result.date}</dd>
-                          </div>
-                        </dl>
-                      </div>
-
-                      <div>
-                        <h4 className="text-lg font-medium text-gray-900 mb-2">Analysis</h4>
-                        <ul className="space-y-2">
-                          {result.analysis.map((rec, recIndex) => (
-                            <li
-                              key={recIndex}
-                              className={`flex items-center text-sm ${
-                                result.isSuspicious ? 'bg-red-50' : 'bg-green-50'
-                              } p-3 rounded-lg`}
-                            >
-                              {result.isSuspicious ? (
-                                <AlertCircle className="h-5 w-5 mr-2 text-red-500" />
-                              ) : (
-                                <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
-                              )}
-                              <span>{rec}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
+                <div 
+                  className={`p-4 border-2 ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100'} rounded-lg text-center transition-colors duration-200 cursor-pointer`}
+                  onClick={() => document.getElementById('fileInput')?.click()}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  <input
+                    id="fileInput"
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                    accept=".eml"
+                    multiple
+                  />
+                  <div className="py-8">
+                    {isDragging ? (
+                      <p className="text-sm font-medium text-blue-600">
+                        Drop your files here
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-gray-700">
+                          Drag and drop your .eml files here, or click to browse
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Only .eml files are supported
+                        </p>
+                      </>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                </div>
+                
+                {selectedFiles.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Files ({selectedFiles.length})</h4>
+                    <ul className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
+                      {selectedFiles.map((file, index) => (
+                        <li key={index} className="py-2 flex items-center justify-between">
+                          <div className="flex items-center">
+                            <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                            <span className="text-sm text-gray-900">{file.name}</span>
+                            {results[index] && (
+                              <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                                results[index]?.isSuspicious 
+                                  ? 'bg-red-100 text-red-800' 
+                                  : 'bg-green-100 text-green-800'
+                              }`}>
+                                {results[index]?.isSuspicious ? 'Suspicious' : 'Safe'}
+                              </span>
+                            )}
+                          </div>
+                          <button 
+                            className="text-xs text-red-600 hover:text-red-800"
+                            onClick={() => removeFile(index)}
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <button
+                  onClick={handleAnalyze}
+                  disabled={selectedFiles.length === 0 || isAnalyzing}
+                  className={`mt-6 w-full flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-md transition duration-200 ${
+                    selectedFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg transform hover:-translate-y-0.5'
+                  }`}
+                >
+                  {isAnalyzing ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {currentFileIndex >= 0 
+                        ? `Analyzing file ${currentFileIndex + 1} of ${selectedFiles.length}...` 
+                        : 'Processing...'}
+                    </span>
+                  ) : (
+                    `Analyze ${selectedFiles.length} Email${selectedFiles.length !== 1 ? 's' : ''}`
+                  )}
+                </button>
+              </div>
+              
+              {results.some(r => r !== null) && (
+                <div className="space-y-8">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Analysis Results</h3>
+                  
+                  {results.map((result, index) => {
+                    if (!result) return null;
+                    
+                    return (
+                      <div key={index} className="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div className={`p-6 ${result.isSuspicious ? 'bg-red-50' : 'bg-green-50'} border-b`}>
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 bg-white rounded-full p-2 shadow-sm">
+                              {result.isSuspicious ? (
+                                <AlertTriangle className="h-5 w-5 text-red-600" />
+                              ) : (
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              )}
+                            </div>
+                            <span className="font-medium ml-3">
+                              {selectedFiles[index]?.name}: {result.isSuspicious ? 'Suspicious Email Detected' : 'Email Appears Safe'}
+                            </span>
+                          </div>
+                        </div>
 
-        {/* Info Section */}
-        <div className="mt-16 max-w-5xl mx-auto">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">How To Protect Yourself From Phishing</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-5 rounded-lg shadow-md hover:shadow-lg transition duration-200">
-              <div className="text-blue-600 mb-3">
-                <Eye className="h-8 w-8" />
-              </div>
-              <h4 className="font-medium text-gray-900 mb-2">Check URLs Carefully</h4>
-              <p className="text-sm text-gray-600">Always verify the website URL before entering sensitive information. Phishing sites often use URLs that look similar to legitimate ones.</p>
+                        <div className="p-6 space-y-6">
+                          <div>
+                            <h4 className="text-lg font-medium text-gray-900 mb-2">Email Details</h4>
+                            <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="bg-gray-50 px-4 py-3 rounded-lg">
+                                <dt className="text-sm font-medium text-gray-500">Sender</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{result.sender}</dd>
+                              </div>
+                              <div className="bg-gray-50 px-4 py-3 rounded-lg">
+                                <dt className="text-sm font-medium text-gray-500">Subject</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{result.subject}</dd>
+                              </div>
+                              <div className="bg-gray-50 px-4 py-3 rounded-lg">
+                                <dt className="text-sm font-medium text-gray-500">Recipient</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{result.recipient}</dd>
+                              </div>
+                              <div className="bg-gray-50 px-4 py-3 rounded-lg">
+                                <dt className="text-sm font-medium text-gray-500">Date</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{result.date}</dd>
+                              </div>
+                            </dl>
+                          </div>
+
+                          <div>
+                            <h4 className="text-lg font-medium text-gray-900 mb-2">Analysis</h4>
+                            <ul className="space-y-2">
+                              {result.analysis.map((rec, recIndex) => (
+                                <li
+                                  key={recIndex}
+                                  className={`flex items-center text-sm ${
+                                    result.isSuspicious ? 'bg-red-50' : 'bg-green-50'
+                                  } p-3 rounded-lg`}
+                                >
+                                  {result.isSuspicious ? (
+                                    <AlertCircle className="h-5 w-5 mr-2 text-red-500" />
+                                  ) : (
+                                    <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
+                                  )}
+                                  <span>{rec}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <div className="bg-white p-5 rounded-lg shadow-md hover:shadow-lg transition duration-200">
-              <div className="text-blue-600 mb-3">
-                <Lock className="h-8 w-8" />
+
+            {/* Info Section */}
+            <div className="mt-16 max-w-5xl mx-auto">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">How To Protect Yourself From Phishing</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-5 rounded-lg shadow-md hover:shadow-lg transition duration-200">
+                  <div className="text-blue-600 mb-3">
+                    <Eye className="h-8 w-8" />
+                  </div>
+                  <h4 className="font-medium text-gray-900 mb-2">Check URLs Carefully</h4>
+                  <p className="text-sm text-gray-600">Always verify the website URL before entering sensitive information. Phishing sites often use URLs that look similar to legitimate ones.</p>
+                </div>
+                <div className="bg-white p-5 rounded-lg shadow-md hover:shadow-lg transition duration-200">
+                  <div className="text-blue-600 mb-3">
+                    <Lock className="h-8 w-8" />
+                  </div>
+                  <h4 className="font-medium text-gray-900 mb-2">Enable Two-Factor Authentication</h4>
+                  <p className="text-sm text-gray-600">Add an extra layer of security by enabling two-factor authentication for your important accounts.</p>
+                </div>
+                <div className="bg-white p-5 rounded-lg shadow-md hover:shadow-lg transition duration-200">
+                  <div className="text-blue-600 mb-3">
+                    <AlertCircle className="h-8 w-8" />
+                  </div>
+                  <h4 className="font-medium text-gray-900 mb-2">Be Wary of Urgent Requests</h4>
+                  <p className="text-sm text-gray-600">Phishing attempts often create a false sense of urgency. Take your time to verify unexpected requests.</p>
+                </div>
               </div>
-              <h4 className="font-medium text-gray-900 mb-2">Enable Two-Factor Authentication</h4>
-              <p className="text-sm text-gray-600">Add an extra layer of security by enabling two-factor authentication for your important accounts.</p>
             </div>
-            <div className="bg-white p-5 rounded-lg shadow-md hover:shadow-lg transition duration-200">
-              <div className="text-blue-600 mb-3">
-                <AlertCircle className="h-8 w-8" />
-              </div>
-              <h4 className="font-medium text-gray-900 mb-2">Be Wary of Urgent Requests</h4>
-              <p className="text-sm text-gray-600">Phishing attempts often create a false sense of urgency. Take your time to verify unexpected requests.</p>
-            </div>
-          </div>
-        </div>
+          </React.Fragment>
+        ) : (
+          <HelpPage />
+        )}
       </main>
 
       {/* Improved Footer */}
